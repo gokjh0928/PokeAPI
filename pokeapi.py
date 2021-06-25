@@ -125,11 +125,14 @@ class Pokemon:
 
 
 while True:
+    clear()
+    co()
     pd = Pokedex()
     print("Welcome to the Pokedex! What would you like to do?")
     command = input(
         "- 'Add' to Pokedex\n- 'View' Pokedex\n- 'Remove' last added Pokemon from Pokedex\n- 'Clear' Pokedex\n- 'Quit'\n").lower()
     clear()
+    co()
     if command == "add":
         pokemon = input("Which Pokemon do you wish to add? ").lower()
         pd.add(pokemon)
@@ -141,9 +144,9 @@ while True:
     elif command == "clear":
         pd.clear()
     elif command == "quit":
+        co()
         clear()
         break
     else:
         print("Please enter a valid command")
     input("Press any key to continue ")
-    clear()
