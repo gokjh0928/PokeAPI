@@ -2,6 +2,7 @@ import requests
 import pprint
 from IPython.display import clear_output as co
 from os import system, name
+from collections import defaultdict
 
 
 def clear():
@@ -14,9 +15,11 @@ def clear():
 
 
 class Pokedex:
-    dex_dict = {}
+    dex_dict = defaultdict(list)
     last_added = []
     pokemon_present = []
+    stat_lists = defaultdict(lambda: defaultdict(list))
+    avg_stat_vals = defaultdict(dict)
 
     def add(self, pokemon):
         """ Adds a Pokemon to the Pokedex if the input name is a valid one """
@@ -42,15 +45,16 @@ class Pokedex:
 
             # Append Pokemon's info dict to the lists of its types(i.e. Charizard to 'flying' and 'fire' lists)
             for poketype in pokeinfo['types']:
-                # If a list for the type already exists, append the pokemon info dictionary to the list
-                if poketype in self.dex_dict:
-                    last_entry.append((poketype, len(self.dex_dict[poketype])))
-                    self.dex_dict[poketype].append(pokeinfo)
-                # If the list for the type is not yet created, create the list and add Pokemon's info dict
-                else:
-                    last_entry.append((poketype, 0))
-                    # assigns list containing the info dict to the new type category
-                    self.dex_dict[poketype] = [pokeinfo]
+                # Append the pokemon info dictionary to the list
+                last_entry.append((poketype, len(self.dex_dict[poketype])))
+                # assigns list containing the info dict to the new type category
+                self.dex_dict[poketype].append(pokeinfo)
+
+                for stat in pokeinfo['basestats']:
+                    self.stat_lists[poketype][stat].append(
+                        pokeinfo['basestats'][stat])
+                    self.avg_stat_vals[poketype][stat] = sum(
+                        self.stat_lists[poketype][stat]) / len(self.stat_lists[poketype][stat])
 
             # append the last_entry to last_added to allow for Pokemon deletion later
             self.last_added.append(last_entry)
@@ -64,6 +68,7 @@ class Pokedex:
         # Gets the last added pokemon
         last_entry = self.last_added[-1]
 
+        del_avg_category = False
         # Delete the Pokemon in all of the type categories it's in
         # (i.e. Removing Charizard from the 'Fire' list at index 2, from 'Flying' list at index 5)
         for coord in last_entry:
@@ -71,12 +76,23 @@ class Pokedex:
             idx = coord[1]
             name = self.dex_dict[category][idx]['name']
             del self.dex_dict[category][idx]
+            for stat in ['hp', 'attack', 'defense', 'special-attack', 'special-defense', 'speed']:
+                del self.stat_lists[category][stat][-1]
+                if self.stat_lists[category][stat]:
+                    self.avg_stat_vals[category][stat] = sum(
+                        self.stat_lists[category][stat]) / len(self.stat_lists[category][stat])
+                else:
+                    del_avg_category = True
+            if del_avg_category:
+                del self.avg_stat_vals[category]
+                del_avg_category = False
             if not self.dex_dict[category]:
                 del self.dex_dict[category]
 
         # Since the Pokemon is deleted, don't need the last_entry anymore, so delete it
         del self.last_added[-1]
         del self.pokemon_present[-1]
+
         print(f"Removed {name}")
 
     def clear(self):
@@ -86,6 +102,14 @@ class Pokedex:
         self.dex_dict.clear()
         self.last_added.clear()
         self.pokemon_present.clear()
+        self.avg_stat_vals.clear()
+        self.stat_lists.clear()
+
+    def print(self):
+        print("POKEDEX:")
+        pprint.pprint(dict(self.dex_dict), sort_dicts=False)
+        print("STAT AVG PER TYPE:")
+        pprint.pprint(dict(dict(self.avg_stat_vals)), sort_dicts=False)
 
 
 class Pokemon:
@@ -137,10 +161,12 @@ while True:
         pokemon = input("Which Pokemon do you wish to add? ").lower()
         pd.add(pokemon)
     elif command == "remove":
-        pd.remove()
+        if not pd.pokemon_present:
+            print("No Pokemon to remove!")
+        else:
+            pd.remove()
     elif command == "view":
-        print("POKEDEX:")
-        pprint.pprint(pd.dex_dict, sort_dicts=False)
+        pd.print()
     elif command == "clear":
         pd.clear()
     elif command == "quit":
